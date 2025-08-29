@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smart-librarian
+    env_file:
+      - .env
+    ports:
+      - "8501:8501"
+    volumes:
+      # doar indexul Chroma persistă între rulări
+      - ./.chroma:/app/.chroma
+      # fișierul sursă cu rezumatele
+      - ./book_summaries.md:/app/book_summaries.md:ro
+    restart: unless-stopped

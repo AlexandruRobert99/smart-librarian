@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# Env & secrets
+.env
+
+# Chroma & cache
+.chroma/
+.cache/
+
+# VSCode
+.vscode/
+
+# Docker
+*.db
+*.sqlite3
+book_summaries.md
