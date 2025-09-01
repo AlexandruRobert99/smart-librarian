@@ -34,10 +34,20 @@ MODEL_IMAGE=dall-e-3
 - `CHROMA_DIR` este directorul local folosit pentru stocarea bazei de date Chroma. Poți modifica calea după preferințe.
 
 
-2. Build & run cu Docker:
+2. Build & run cu docker-compose:
+
+	Asigură-te că fișierul `.env` se află în rădăcina proiectului; `docker-compose` va citi variabilele din el automat.
+
+	Pornire (build + run):
+
 	```sh
-	docker build -t smart-librarian .
-	docker run -p 8501:8501 --env-file .env smart-librarian
+	docker-compose up --build -d
+	```
+
+	Oprește serviciile:
+
+	```sh
+	docker-compose down
 	```
 
 ### Accesează UI
