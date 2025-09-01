@@ -1,4 +1,6 @@
-## Smart Librarian POC
+## Smart Librarian
+
+Un POC care recomandă cărți pe baza temelor tale, folosind un index semantic local (Chroma) și OpenAI pentru generare de răspunsuri, transcriere și sinteză audio. Interfață simplă în Streamlit, istoric de sesiune (fără persistență). 
 
 ### Setup
 1. Adaugă cheia ta OpenAI în fișierul `.env`:
@@ -16,6 +18,10 @@ Deschide [http://localhost:8501](http://localhost:8501) în browser.
 
 ### Structură
 - `app/` — cod sursă modular
+- `book_summaries.json` — dataset folosit pentru RAG
 - `requirements.txt` — dependențe
-- `Dockerfile` — build container
-- `.env` — cheie OpenAI
+- `Dockerfile` — container build
+- `docker-compose.yml` — configurație de dezvoltare
+- `.env` — fișier local cu variabile de mediu
+- `.gitignore` / `.dockerignore` — fișiere ignorate
+- `README.md` — documentație
