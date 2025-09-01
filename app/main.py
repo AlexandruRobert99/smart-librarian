@@ -7,7 +7,7 @@ import streamlit as st
 
 # import sibling modules (main.py runs from the `app/` folder)
 sys.path.insert(0, os.path.dirname(__file__))
-from chat_service import ask_chatbot
+from chat_service import ask_chatbot, client
 from stt_service import transcribe_audio
 from streamlit_mic_recorder import mic_recorder
 from tts_service import text_to_speech
@@ -19,7 +19,9 @@ except Exception:
     HAS_IMAGE = False
 
 # px constant for textarea and mic size
-TEXTAREA_HEIGHT = 100  # px – poți schimba oricând
+# Start textarea at a minimal practical height (px).
+# Assumption: 40px is a reasonable minimal starting height for a single-line textarea.
+TEXTAREA_HEIGHT = 40  # px – poți schimba oricând
 st.set_page_config(page_title="Smart Librarian", page_icon="📚", layout="centered")
 
 # Inject a nicer font and message-style CSS (WhatsApp-like alignment)
@@ -43,43 +45,62 @@ st.markdown(
     /* mic recorder wrapper button styling: make the mic a circular button matching the
        textarea height (100px). Target common nested patterns used by recorder components
        and Streamlit so the visible element is a single circular control. */
-    #mic-wrapper { width: 100%; display: flex; align-items: center; justify-content: center; height: 100%; }
-    /* Make the mic the same height as the textarea (100px) and a circle */
+        #mic-wrapper { display: flex; align-items: center; justify-content: center; height: 100%; }
+    /* Make the mic the same height as the textarea and a circle; use the
+       CSS variable --mic-size so changing TEXTAREA_HEIGHT updates everything. */
     #mic-wrapper button,
     #mic-wrapper .stButton>button,
     #mic-wrapper .stButton>div>button,
     #mic-wrapper [role="button"] { 
-        width: 100px !important;
-        height: 100px !important;
-        min-width: 100px !important;
-        min-height: 100px !important;
+        width: var(--mic-size) !important;
+        height: var(--mic-size) !important;
+        min-width: var(--mic-size) !important;
+        min-height: var(--mic-size) !important;
         padding: 0 !important;
         border-radius: 50% !important; /* perfect circle */
         background: #0b57d0 !important;
         color: #fff !important;
         border: none !important;
         box-shadow: 0 6px 16px rgba(11,87,208,0.24) !important;
-        font-size: 20px !important;
+        font-size: calc(var(--mic-size) * 0.18) !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
         outline: none !important;
     }
     /* ensure SVG/icon size */
-    #mic-wrapper button svg, #mic-wrapper .stButton>button svg { width: 26px !important; height: 26px !important; }
+    #mic-wrapper button svg, #mic-wrapper .stButton>button svg { width: calc(var(--mic-size) * 0.26) !important; height: calc(var(--mic-size) * 0.26) !important; }
     #mic-wrapper button:active, #mic-wrapper .stButton>button:active { transform: scale(0.96); }
     /* normalize outer containers that some recorder versions render */
     #mic-wrapper > div, #mic-wrapper > div > div, #mic-wrapper .stButton, #mic-wrapper .stButton > div { background: transparent !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
     /* capture cases where the component nests the real clickable inside divs */
     #mic-wrapper .stButton > div > button, #mic-wrapper .stButton > div > div > button { padding:0 !important; margin:0 !important; }
     /* force the clickable element to be the circular button */
-    #mic-wrapper [role="button"], #mic-wrapper .stButton>button, #mic-wrapper > div > button { width: 100px !important; height: 100px !important; min-width:100px !important; min-height:100px !important; border-radius:50% !important; padding:0 !important; display:flex !important; align-items:center !important; justify-content:center !important; background:#0b57d0 !important; color:#fff !important; box-shadow: 0 6px 16px rgba(11,87,208,0.24) !important; }
+    #mic-wrapper [role="button"], #mic-wrapper .stButton>button, #mic-wrapper > div > button { width: var(--mic-size) !important; height: var(--mic-size) !important; min-width:var(--mic-size) !important; min-height:var(--mic-size) !important; border-radius:50% !important; padding:0 !important; display:flex !important; align-items:center !important; justify-content:center !important; background:#0b57d0 !important; color:#fff !important; box-shadow: 0 6px 16px rgba(11,87,208,0.24) !important; }
+    /* specifically target recorder's custom button class (seen in your snippet) */
+    #mic-wrapper .myButton, #mic-wrapper button.myButton {
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 100% !important;
+        min-height: 100% !important;
+        padding: 0 !important; /* keep center alignment */
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: #0b57d0 !important; /* override inline bg */
+        color: #fff !important; /* override inline color */
+        border: none !important; /* override inline border-color */
+        box-shadow: 0 6px 16px rgba(11,87,208,0.24) !important;
+        font-size: calc(var(--mic-size) * 0.45) !important; /* make the emoji large */
+        line-height: 1 !important;
+    }
     /* hide extraneous small squares, borders and backgrounds */
     #mic-wrapper div[style], #mic-wrapper .small-square, #mic-wrapper .square { background: transparent !important; border: none !important; box-shadow: none !important; }
     /* additional fallbacks: keep wrappers flexible and only size the real button */
     #mic-wrapper > div { background: transparent !important; padding: 0 !important; margin: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; }
     /* the actual clickable button inside whatever wrapper the component renders */
-    #mic-wrapper > div > button { background: #0b57d0 !important; color: #fff !important; width: 100px !important; height: 100px !important; border-radius: 50% !important; display:flex !important; align-items:center !important; justify-content:center !important; padding:0 !important; border:none !important; }
+    #mic-wrapper > div > button { background: #0b57d0 !important; color: #fff !important; width: var(--mic-size) !important; height: var(--mic-size) !important; border-radius: 50% !important; display:flex !important; align-items:center !important; justify-content:center !important; padding:0 !important; border:none !important; }
     #mic-wrapper .stButton, #mic-wrapper .stButton>div { background: transparent !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; }
     /* hide any inner small square elements that some versions render; keep the svg/icon visible */
     #mic-wrapper .recorder-icon, #mic-wrapper .icon, #mic-wrapper .small-square { background: transparent !important; width: auto !important; height: auto !important; }
@@ -94,58 +115,39 @@ st.markdown(
 
 # Ensure the mic button matches the textarea height defined above. We use a CSS variable
 # so changing TEXTAREA_HEIGHT updates both textarea and recorder button.
-st.markdown("""
+st.markdown(f"""
 <style>
-:root { --mic-size: {HEIGHT}px; }
-
-/* Hide horizontal rules inside main content to remove visual separators */
-main hr, [role="main"] hr, .stApp hr { display: none !important; }
-
-/* Tighten default margins for Streamlit blocks */
-.stDivider, .stBlock, .stMarkdown, hr { margin-top: 6px !important; margin-bottom: 6px !important; }
-
-/* mic-wrapper: force an exact box and prevent parent wrappers from stretching */
+/* default fallback mic size — use the TEXTAREA_HEIGHT so mic starts equal to textarea */
+:root {{ --mic-size: {TEXTAREA_HEIGHT}px; }}
 
 /* Make the mic-wrapper an exact square and center its contents. The real
    clickable element should fill the wrapper so nested wrappers don't change size. */
-#mic-wrapper {
+#mic-wrapper {{
     width: var(--mic-size) !important;
     height: var(--mic-size) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     margin: 0 !important; padding: 0 !important; overflow: visible !important;
-}
+}}
 
-/* Ensure nested wrappers don't add spacing; let the real button fill the wrapper */
-#mic-wrapper, #mic-wrapper * { box-sizing: border-box !important; margin: 0 !important; padding: 0 !important; }
-#mic-wrapper > div, #mic-wrapper > div > div, #mic-wrapper span, #mic-wrapper a { display:flex !important; align-items:center !important; justify-content:center !important; width:100% !important; height:100% !important; }
-
-/* Target the clickable element and make it fill the wrapper (no absolute positioning) */
-#mic-wrapper button,
-#mic-wrapper .stButton>button,
-#mic-wrapper .stButton>div>button,
-#mic-wrapper [role="button"],
-#mic-wrapper > div > button,
-#mic-wrapper .record-button, #mic-wrapper .recorder-button, #mic-wrapper .rm-btn {
-    position: static !important;
+/* The button (or any element with role=button) should fill the wrapper */
+#mic-wrapper button, #mic-wrapper [role="button"] {{
     width: 100% !important;
     height: 100% !important;
-    min-width: 100% !important;
-    min-height: 100% !important;
     border-radius: 50% !important;
     padding: 0 !important;
     background: #0b57d0 !important;
     color: #fff !important;
     display: flex !important; align-items: center !important; justify-content: center !important;
     box-shadow: 0 6px 16px rgba(11,87,208,0.24) !important;
-}
+}}
 
 /* Icon scaling */
-#mic-wrapper svg { width: calc(var(--mic-size) * 0.32) !important; height: calc(var(--mic-size) * 0.32) !important; }
+#mic-wrapper svg {{ width: calc(var(--mic-size) * 0.32) !important; height: calc(var(--mic-size) * 0.32) !important; }}
 
 </style>
-""" .replace("{HEIGHT}", str(TEXTAREA_HEIGHT)), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 
 def ensure_state():
@@ -169,6 +171,36 @@ def ensure_state():
 
 
 ensure_state()
+
+
+def is_moderation_flagged(text: str) -> tuple[bool, dict]:
+    """Use OpenAI Moderation API to check text. Returns (flagged, details).
+
+    If the moderation call fails we return (False, {}) to avoid blocking on
+    infra problems; you can change this behavior to fail-closed if desired.
+    """
+    try:
+        if not text:
+            return False, {}
+        resp = client.moderations.create(model="omni-moderation-latest", input=text)
+        # SDK may return an object with .results or a dict
+        results = None
+        if isinstance(resp, dict):
+            results = resp.get("results")
+        else:
+            results = getattr(resp, "results", None)
+        if not results:
+            return False, {}
+        first = results[0]
+        flagged = False
+        if isinstance(first, dict):
+            flagged = bool(first.get("flagged"))
+        else:
+            flagged = bool(getattr(first, "flagged", False))
+        return flagged, first
+    except Exception:
+        # Do not block on moderation API errors by default
+        return False, {}
 
 
 def render_messages():
@@ -254,6 +286,12 @@ if rec_out_key in st.session_state and st.session_state.get(rec_out_key):
                 st.session_state.messages.append({"role": "assistant", "text": res})
             elif res:
                 user_text = res
+                # Moderation check on transcribed text
+                flagged, _ = is_moderation_flagged(user_text)
+                if flagged:
+                    st.session_state.messages.append({"role": "user", "text": user_text})
+                    st.session_state.messages.append({"role": "assistant", "text": "Îmi pare, nu pot procesa mesaje care conțin limbaj ofensator. Te rog reformulează."})
+                    st.rerun()
                 st.session_state.messages.append({"role": "user", "text": user_text})
                 placeholder_text = "Generare răspuns..."
                 st.session_state.messages.append({"role": "assistant", "text": placeholder_text})
@@ -276,7 +314,8 @@ if rec_out_key in st.session_state and st.session_state.get(rec_out_key):
                     if not has_title or not has_answer:
                         st.session_state.messages[placeholder_idx] = {"role": "assistant", "text": "Nu am o recomandare relevantă pentru această temă. Încearcă să reformulezi."}
                     elif is_apology:
-                        st.session_state.messages[placeholder_idx] = {"role": "assistant", "text": answer_text}
+                        # If the model refused, show only the canonical apology text (avoid extra descriptions)
+                        st.session_state.messages[placeholder_idx] = {"role": "assistant", "text": apology}
                     else:
                         st.session_state.last_title = title
                         st.session_state.last_full_summary = full_summary
@@ -299,6 +338,11 @@ def send_text(text: str):
     if not text:
         st.session_state.messages.append({"role": "assistant", "text": "Te rog introdu un mesaj."})
         return
+    # Moderation check before sending to the LLM
+    flagged, _ = is_moderation_flagged(text)
+    if flagged:
+        st.session_state.messages.append({"role": "assistant", "text": "Îmi pare, nu pot procesa mesaje care conțin limbaj ofensator. Te rog reformulează."})
+        return
     st.session_state.messages.append({"role": "user", "text": text})
     st.session_state.user_input = ""
     out = ask_chatbot(text)
@@ -315,8 +359,8 @@ def send_text(text: str):
         # No useful recommendation returned
         st.session_state.messages.append({"role": "assistant", "text": "Nu am o recomandare relevantă pentru această temă. Încearcă să reformulezi."})
     elif is_apology:
-        # Model explicitly refused — show refusal but do NOT update last_* so buttons keep previous valid reply
-        st.session_state.messages.append({"role": "assistant", "text": answer_text})
+        # Model explicitly refused — show only the canonical refusal text and do NOT update last_*
+        st.session_state.messages.append({"role": "assistant", "text": apology})
     else:
         # Valid recommendation: update the 'last' fields and show answer + detailed summary
         st.session_state.last_title = title
@@ -387,17 +431,69 @@ with media_cols[1]:
     
 
 # Input area with recorder on the right (simple in-browser recorder)
-col1, col2 = st.columns([10, 2], vertical_alignment="center")
+col1, col2 = st.columns([5, 1], vertical_alignment="center")
 with col1:
     user_input = st.text_area("Mesaj", value=st.session_state.user_input, key="user_input", placeholder="Scrie aici…", height=TEXTAREA_HEIGHT, label_visibility="visible")
 with col2:
     # Wrap the recorder so we can target the internal button with CSS and
     # ensure the wrapper uses the same height as the textarea constant.
-    st.markdown(f"<div id='mic-wrapper' style='height:{TEXTAREA_HEIGHT}px'>", unsafe_allow_html=True)
+    st.markdown("<div id='mic-wrapper' style='display:flex; align-items:center; justify-content:center;'>", unsafe_allow_html=True)
     # Capture the immediate return value so the first start/stop can be handled
     # disable use_container_width so the recorder doesn't stretch the wrapper
     rec_audio = mic_recorder(start_prompt="🎤", stop_prompt="🛑", key=RECORDER_KEY, use_container_width=False, just_once=True)
     st.markdown('</div>', unsafe_allow_html=True)
+
+    # Inject JS: use ResizeObserver to keep --mic-size synced to the textarea height
+    # This is more robust than a one-time measurement and handles user resizes.
+    st.markdown(
+        """
+        <script>
+        (function(){
+            function setMicSizeFromTextarea(ta){
+                try{
+                    if(!ta) return;
+                    const rect = ta.getBoundingClientRect();
+                    const h = Math.ceil(rect.height);
+                    document.documentElement.style.setProperty('--mic-size', h + 'px');
+                }catch(e){ console && console.warn && console.warn('setMicSizeFromTextarea failed', e); }
+            }
+
+            function initObserver(){
+                const ta = document.querySelector('textarea');
+                if(!ta) return false;
+                // initial set
+                setMicSizeFromTextarea(ta);
+                // observe height changes
+                try{
+                    const ro = new ResizeObserver(entries => {
+                        for(const ent of entries){
+                            setMicSizeFromTextarea(ent.target);
+                        }
+                    });
+                    ro.observe(ta);
+                }catch(e){ /* ResizeObserver may not be available in old browsers */ }
+                // also update on window resize as a fallback
+                window.addEventListener('resize', function(){ setMicSizeFromTextarea(ta); });
+                return true;
+            }
+
+            function readyInit(){
+                if(!initObserver()){
+                    // retry shortly if textarea not yet present
+                    setTimeout(readyInit, 250);
+                }
+            }
+
+            if(document.readyState === 'complete' || document.readyState === 'interactive'){
+                readyInit();
+            } else {
+                window.addEventListener('DOMContentLoaded', readyInit);
+            }
+        })();
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
 
 def handle_send():
     send_text(st.session_state.user_input)
@@ -427,6 +523,12 @@ if 'rec_audio' in locals() and rec_audio:
                 st.session_state.messages.append({"role": "assistant", "text": res})
             elif res:
                 user_text = res
+                # Moderation check on immediate transcription
+                flagged, _ = is_moderation_flagged(user_text)
+                if flagged:
+                    st.session_state.messages.append({"role": "user", "text": user_text})
+                    st.session_state.messages.append({"role": "assistant", "text": "Îmi pare, nu pot procesa mesaje care conțin limbaj ofensator. Te rog reformulează."})
+                    st.rerun()
                 st.session_state.messages.append({"role": "user", "text": user_text})
                 placeholder_text = "Generare răspuns..."
                 st.session_state.messages.append({"role": "assistant", "text": placeholder_text})
@@ -449,7 +551,8 @@ if 'rec_audio' in locals() and rec_audio:
                     if not has_title or not has_answer:
                         st.session_state.messages[placeholder_idx] = {"role": "assistant", "text": "Nu am o recomandare relevantă pentru această temă. Încearcă să reformulezi."}
                     elif is_apology:
-                        st.session_state.messages[placeholder_idx] = {"role": "assistant", "text": answer_text}
+                        # If the model refused, show only the canonical apology text (avoid extra descriptions)
+                        st.session_state.messages[placeholder_idx] = {"role": "assistant", "text": apology}
                     else:
                         st.session_state.last_title = title
                         st.session_state.last_full_summary = full_summary

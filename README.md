@@ -33,8 +33,7 @@ MODEL_IMAGE=dall-e-3
 
 - `CHROMA_DIR` este directorul local folosit pentru stocarea bazei de date Chroma. Poți modifica calea după preferințe.
 
-După ce salvezi `.env`, poți porni aplicația (local sau în Docker) conform secțiunii "Build & run" de mai sus.
-	```
+
 2. Build & run cu Docker:
 	```sh
 	docker build -t smart-librarian .
