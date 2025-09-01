@@ -108,6 +108,11 @@ st.markdown(
     #mic-wrapper .stButton, #mic-wrapper .stButton>div, #mic-wrapper .streamlit-expanderHeader { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
     /* make sure Streamlit wrapper doesn't force a different shape; keep it flexible */
     #mic-wrapper .stButton { border-radius: 0 !important; display:flex !important; align-items:center !important; justify-content:center !important; }
+    /* Sidebar specific: fundal #181818 și text deschis */
+    section[data-testid="stSidebar"], div[data-testid="stSidebar"], .stSidebar {
+        background-color: #181818 !important;
+        color: #e0e0e0 !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -245,8 +250,15 @@ def escape_html(s: str) -> str:
 
 
 with st.sidebar:
-    st.header("Audio (STT)")
-    st.markdown("Pentru transcriere, încarcă un fișier audio sau folosește butonul de înregistrare (dacă este disponibil).")
+    st.header("Smart Librarian")
+    st.markdown("""
+    **Funcții principale:**
+    - Pune întrebări despre cărți și autori
+    - Primește recomandări personalizate
+    - Ascultă răspunsurile generate (Text-to-Speech)
+    - Generează coperta unei cărți
+    - Transcrie mesaje audio (Speech-to-Text)
+    """)
 
     st.markdown("---")
     st.markdown("**Modele folosite:**")
@@ -563,5 +575,3 @@ if 'rec_audio' in locals() and rec_audio:
 
                 # Force immediate rerun to show transcript and response
                 st.rerun()
-
-
