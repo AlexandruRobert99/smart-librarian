@@ -20,6 +20,29 @@ except Exception:
 
 st.set_page_config(page_title="Smart Librarian", page_icon="📚", layout="centered")
 
+# Inject a nicer font and message-style CSS (WhatsApp-like alignment)
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    html, body, [class*="css"]  { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial !important; }
+    .message-row { display: flex; margin: 8px 0; }
+    .message-row.user { justify-content: flex-end; }
+    .message-row.assistant { justify-content: flex-start; }
+    .message-frame { max-width: 85%; }
+    .bubble { padding: 12px; border-radius: 14px; line-height: 1.35; box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
+    .bubble.user { background: #dcf8c6; color: #062006; border-bottom-right-radius: 4px; }
+    .bubble.assistant { background: #f1f3f4; color: #111; border-bottom-left-radius: 4px; }
+    .label { font-weight: 700; margin-bottom: 6px; font-size: 14px; }
+    .label.user { text-align: right; color: #0b57d0; }
+    .label.assistant { text-align: left; color: #c80815; }
+    /* make the expander content align left as assistant replies */
+    .stExpander > .stMarkdown, .stExpanderContent { text-align: left; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 def ensure_state():
     if "messages" not in st.session_state:
@@ -32,6 +55,11 @@ def ensure_state():
         st.session_state.user_input = ""
     if "just_sent" not in st.session_state:
         st.session_state.just_sent = False
+    # store generated media so they survive reruns
+    if "generated_audio" not in st.session_state:
+        st.session_state.generated_audio = None
+    if "generated_image" not in st.session_state:
+        st.session_state.generated_image = None
 
 
 ensure_state()
@@ -41,28 +69,31 @@ def render_messages():
     for msg in st.session_state.messages:
         role = msg.get("role")
         text = msg.get("text", "")
+        # Build safe HTML fragments and use CSS classes to control alignment
+        safe = escape_html(text)
         if role == "user":
-            safe = escape_html(text)
-            # user bubble: name above, green bubble
+            # user: align right, 'Tu' label on the right
             html_snippet = (
-                "<div style='margin:8px 0'>"
-                "<div style='font-size:12px;font-weight:600;margin-bottom:4px;color:#145214'>Tu</div>"
-                "<div style='background:#d6f5d6;color:#062006;padding:12px;border-radius:12px;margin:0;max-width:85%'>" + safe + "</div>"
+                "<div class='message-row user'>"
+                "  <div class='message-frame'>"
+                "    <div class='label user'>Tu</div>"
+                "    <div class='bubble user'>" + safe + "</div>"
+                "  </div>"
                 "</div>"
             )
             st.markdown(html_snippet, unsafe_allow_html=True)
         else:
-            # assistant
+            # assistant: align left
             if text.startswith("Rezumat detaliat"):
                 with st.expander("Rezumat detaliat"):
                     st.write(text.replace("Rezumat detaliat:\n", ""))
             else:
-                safe = escape_html(text)
-                # assistant bubble: name above, grey bubble
                 html_snippet = (
-                    "<div style='margin:8px 0'>"
-                    "<div style='font-size:12px;font-weight:600;margin-bottom:4px;color:#333'>Librarian</div>"
-                    "<div style='background:#cbd2d9;color:#111;padding:12px;border-radius:12px;margin:0;max-width:85%'>" + safe + "</div>"
+                    "<div class='message-row assistant'>"
+                    "  <div class='message-frame'>"
+                    "    <div class='label assistant'>Librarian</div>"
+                    "    <div class='bubble assistant'>" + safe + "</div>"
+                    "  </div>"
                     "</div>"
                 )
                 st.markdown(html_snippet, unsafe_allow_html=True)
@@ -89,7 +120,7 @@ with st.sidebar:
     st.caption("Istoricul conversației se pierde la refresh (session-only).")
 
 
-st.title("📚 Smart Librarian — RAG + Tool")
+st.markdown("<h1 style='text-align:center; margin-bottom: 0.4rem'>📚 Smart Librarian</h1>", unsafe_allow_html=True)
 
 render_messages()
 
@@ -112,16 +143,70 @@ def send_text(text: str):
     title = out.get("title")
     answer_text = out.get("answer_text", "")
     full_summary = out.get("full_summary", "")
-    st.session_state.last_title = title
-    st.session_state.last_full_summary = full_summary
-    st.session_state.last_answer_text = answer_text
-    if not title or not answer_text:
+    # Decide whether this response is a valid recommendation
+    apology = "Îmi pare rău, nu vă pot ajuta cu informații despre acest subiect."
+    has_title = bool(title)
+    has_answer = bool(answer_text)
+    is_apology = apology in (answer_text or "")
+
+    if not has_title or not has_answer:
+        # No useful recommendation returned
         st.session_state.messages.append({"role": "assistant", "text": "Nu am o recomandare relevantă pentru această temă. Încearcă să reformulezi."})
-    else:
+    elif is_apology:
+        # Model explicitly refused — show refusal but do NOT update last_* so buttons keep previous valid reply
         st.session_state.messages.append({"role": "assistant", "text": answer_text})
-        st.session_state.messages.append({"role": "assistant", "text": "Rezumat detaliat:\n" + full_summary})
+    else:
+        # Valid recommendation: update the 'last' fields and show answer + detailed summary
+        st.session_state.last_title = title
+        st.session_state.last_full_summary = full_summary
+        st.session_state.last_answer_text = answer_text
+        st.session_state.messages.append({"role": "assistant", "text": answer_text})
+        if full_summary:
+            st.session_state.messages.append({"role": "assistant", "text": "Rezumat detaliat:\n" + full_summary})
 
 # Inline audio uploader (placed BEFORE the text area so we can send immediately)
+# Action buttons (listen / generate cover) placed above the audio uploader
+last_title = st.session_state.get("last_title")
+last_answer_text = st.session_state.get("last_answer_text")
+last_full = st.session_state.get("last_full_summary")
+# Buttons: when clicked, store generated media in session_state so both can coexist
+if last_title and last_answer_text:
+    act_cols = st.columns([1, 1])
+    with act_cols[0]:
+        if st.button("🔊 Ascultă", key="audio_top"):
+            combined = last_answer_text + "\n\n" + (last_full or "")
+            audio = text_to_speech(combined)
+            # store result (bytes or path) in session state
+            st.session_state.generated_audio = audio
+
+    with act_cols[1]:
+        if HAS_IMAGE and st.button("🖼️ Generează coperta", key="image_top"):
+            try:
+                img = generate_book_image(last_title)
+                st.session_state.generated_image = img
+            except Exception as e:
+                st.warning(f"Eroare la generarea imaginii: {e}")
+
+    st.markdown("---")
+
+    # render stored media so they persist across reruns
+    media_cols = st.columns([1, 1])
+    with media_cols[0]:
+        ga = st.session_state.get("generated_audio")
+        if ga:
+            if isinstance(ga, (bytes, bytearray)):
+                st.audio(ga, format="audio/mp3")
+            elif isinstance(ga, str) and os.path.exists(ga):
+                with open(ga, "rb") as f:
+                    st.audio(f.read(), format="audio/mp3")
+    with media_cols[1]:
+        gi = st.session_state.get("generated_image")
+        if gi:
+            if isinstance(gi, (bytes, bytearray)):
+                st.image(io.BytesIO(gi))
+            elif isinstance(gi, str) and os.path.exists(gi):
+                st.image(gi)
+
 st.markdown("**Audio:** Încarcă un fișier pentru transcriere")
 uploaded_inline = st.file_uploader("Încarcă audio pentru transcriere", type=["wav", "mp3", "m4a", "ogg", "flac"], key="uploader_inline")
 if uploaded_inline is not None:
@@ -136,49 +221,15 @@ if uploaded_inline is not None:
 
     st.button("Transcrie și trimite ca mesaj", key="transcribe_inline", on_click=_transcribe_and_send, args=(uploaded_inline,))
 
+    
+
 # Input area with recorder on the right (simple in-browser recorder)
 user_input = st.text_area("Mesaj", value=st.session_state.user_input, key="user_input", placeholder="Scrie aici…", height=100, label_visibility="visible")
 
-col1, col2 = st.columns([8, 1])
-with col1:
-    def handle_send():
-        send_text(st.session_state.user_input)
+def handle_send():
+    send_text(st.session_state.user_input)
 
-    send = st.button("Trimite", use_container_width=True, on_click=handle_send)
-with col2:
-    # small placeholder column (reserved for icons / future recorder)
-    st.write("")
+# Full-width send button matching the conversation column
+st.button("Trimite", use_container_width=True, on_click=handle_send)
     
 
-# After messages are rendered, show action buttons for the last assistant reply if available
-last_title = st.session_state.get("last_title")
-last_answer_text = st.session_state.get("last_answer_text")
-last_full = st.session_state.get("last_full_summary")
-if last_title and last_answer_text:
-    act_cols = st.columns([1, 1])
-    with act_cols[0]:
-        if st.button("🔊 Ascultă"):
-            combined = last_answer_text + "\n\n" + (last_full or "")
-            audio = text_to_speech(combined)
-            if isinstance(audio, (bytes, bytearray)):
-                st.audio(audio, format="audio/mp3")
-            elif isinstance(audio, str) and os.path.exists(audio):
-                with open(audio, "rb") as f:
-                    st.audio(f.read(), format="audio/mp3")
-            else:
-                st.warning("Nu am putut genera audio.")
-
-    with act_cols[1]:
-        if HAS_IMAGE and st.button("🖼️ Generează coperta"):
-            try:
-                img = generate_book_image(last_title)
-                if isinstance(img, (bytes, bytearray)):
-                    st.image(io.BytesIO(img))
-                elif isinstance(img, str) and os.path.exists(img):
-                    st.image(img)
-                else:
-                    st.warning("Imaginea a fost generată, dar nu am putut afișa rezultatul.")
-            except Exception as e:
-                st.warning(f"Eroare la generarea imaginii: {e}")
-
-    st.markdown("---")
