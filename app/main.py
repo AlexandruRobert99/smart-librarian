@@ -105,31 +105,34 @@ main hr, [role="main"] hr, .stApp hr { display: none !important; }
 .stDivider, .stBlock, .stMarkdown, hr { margin-top: 6px !important; margin-bottom: 6px !important; }
 
 /* mic-wrapper: force an exact box and prevent parent wrappers from stretching */
-#mic-wrapper { 
+
+/* Make the mic-wrapper an exact square and center its contents. The real
+   clickable element should fill the wrapper so nested wrappers don't change size. */
+#mic-wrapper {
     width: var(--mic-size) !important;
-    height: var(--mic-size) !important;                  /* wrapper same height */
-    display: block !important; 
-    position: relative !important;
+    height: var(--mic-size) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     margin: 0 !important; padding: 0 !important; overflow: visible !important;
 }
 
-/* Ensure nested wrappers don't add spacing */
+/* Ensure nested wrappers don't add spacing; let the real button fill the wrapper */
 #mic-wrapper, #mic-wrapper * { box-sizing: border-box !important; margin: 0 !important; padding: 0 !important; }
-#mic-wrapper > div, #mic-wrapper > div > div, #mic-wrapper span, #mic-wrapper a { display:block !important; width:100% !important; height:100% !important; }
+#mic-wrapper > div, #mic-wrapper > div > div, #mic-wrapper span, #mic-wrapper a { display:flex !important; align-items:center !important; justify-content:center !important; width:100% !important; height:100% !important; }
 
-/* Target and position the real clickable element absolutely so extra wrappers are ignored */
+/* Target the clickable element and make it fill the wrapper (no absolute positioning) */
 #mic-wrapper button,
 #mic-wrapper .stButton>button,
 #mic-wrapper .stButton>div>button,
 #mic-wrapper [role="button"],
 #mic-wrapper > div > button,
 #mic-wrapper .record-button, #mic-wrapper .recorder-button, #mic-wrapper .rm-btn {
-    position: absolute !important;
-    left: 0 !important; top: 0 !important;
-    width: var(--mic-size) !important;
-    height: var(--mic-size) !important;
-    min-width: var(--mic-size) !important;
-    min-height: var(--mic-size) !important;
+    position: static !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
     border-radius: 50% !important;
     padding: 0 !important;
     background: #0b57d0 !important;
@@ -139,7 +142,7 @@ main hr, [role="main"] hr, .stApp hr { display: none !important; }
 }
 
 /* Icon scaling */
-#mic-wrapper svg { width: calc(var(--mic-size) * 0.28) !important; height: calc(var(--mic-size) * 0.28) !important; }
+#mic-wrapper svg { width: calc(var(--mic-size) * 0.32) !important; height: calc(var(--mic-size) * 0.32) !important; }
 
 </style>
 """ .replace("{HEIGHT}", str(TEXTAREA_HEIGHT)), unsafe_allow_html=True)

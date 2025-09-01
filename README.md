@@ -17,9 +17,23 @@ Funcționalități cheie:
 🌐 UI tip ChatGPT: construit în Streamlit, istoric în memorie (se pierde la refresh).
 
 ### Setup
-1. Adaugă cheia ta OpenAI în fișierul `.env`:
-	```env
-	OPENAI_API_KEY=your-openai-key
+1. Crează un fișier `.env` în rădăcina proiectului cu următoarea schemă (înlocuiește `sk-xxx` cu cheia ta OpenAI):
+
+```env
+OPENAI_API_KEY=sk-xxx
+CHROMA_DIR=./.chroma
+
+# Modele
+MODEL_CHAT=gpt-4o-mini
+MODEL_EMBED=text-embedding-3-small
+MODEL_STT=whisper-1
+MODEL_TTS=gpt-4o-mini-tts
+MODEL_IMAGE=dall-e-3
+```
+
+- `CHROMA_DIR` este directorul local folosit pentru stocarea bazei de date Chroma. Poți modifica calea după preferințe.
+
+După ce salvezi `.env`, poți porni aplicația (local sau în Docker) conform secțiunii "Build & run" de mai sus.
 	```
 2. Build & run cu Docker:
 	```sh
