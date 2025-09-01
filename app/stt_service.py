@@ -21,6 +21,7 @@ def transcribe_audio(file_like: BinaryIO) -> str:
         resp = client.audio.transcriptions.create(
             model=MODEL_STT,
             file=file_like,
+            language="ro"
         )
         return resp.text.strip()
     except Exception as e:
