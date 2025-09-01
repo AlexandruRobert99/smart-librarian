@@ -11,6 +11,6 @@ services:
     volumes:
       # doar indexul Chroma persistă între rulări
       - ./.chroma:/app/.chroma
-      # fișierul sursă cu rezumatele
-      - ./book_summaries.md:/app/book_summaries.md:ro
+      # fișierul sursă cu rezumatele (JSON)
+      - ./book_summaries.json:/app/book_summaries.json:ro
     restart: unless-stopped
