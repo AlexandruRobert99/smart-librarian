@@ -1,6 +1,22 @@
 ## Smart Librarian
 
-Un POC care recomandă cărți pe baza temelor tale, folosind un index semantic local (Chroma) și OpenAI pentru generare de răspunsuri, transcriere și sinteză audio. Interfață simplă în Streamlit, istoric de sesiune (fără persistență). 
+Smart Librarian este un chatbot AI construit cu Streamlit, OpenAI GPT și ChromaDB, care recomandă cărți pe baza temelor sau intereselor utilizatorului. Sistemul folosește un vector store (RAG) pentru a găsi titluri relevante, iar apoi completează răspunsul cu un rezumat detaliat stocat local.
+
+Funcționalități cheie:
+
+🔎 RAG (Retrieval Augmented Generation): căutare semantică în baza de date de rezumate scurte (book_summaries.json).
+
+💬 Chatbot conversațional: recomandă titluri și explică de ce se potrivesc.
+
+📖 Tool get_summary_by_title: atașează rezumatul complet dintr-un dicționar local (tools.py).
+
+🎙️ Speech-to-Text (STT): transcriere audio cu gpt-4o-mini-transcribe.
+
+🔊 Text-to-Speech (TTS): ascultă recomandările cu gpt-4o-mini-tts.
+
+🖼️ Generare imagini (opțional): copertă sugestivă pentru carte cu dall-e-3 sau gpt-image-1.
+
+🌐 UI tip ChatGPT: construit în Streamlit, istoric în memorie (se pierde la refresh).
 
 ### Setup
 1. Adaugă cheia ta OpenAI în fișierul `.env`:
