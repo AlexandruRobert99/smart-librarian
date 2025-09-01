@@ -8,13 +8,11 @@ Funcționalități cheie:
 
 💬 Chatbot conversațional: recomandă titluri și explică de ce se potrivesc.
 
-📖 Tool get_summary_by_title: atașează rezumatul complet dintr-un dicționar local (tools.py).
-
 🎙️ Speech-to-Text (STT): transcriere audio cu gpt-4o-mini-transcribe.
 
 🔊 Text-to-Speech (TTS): ascultă recomandările cu gpt-4o-mini-tts.
 
-🖼️ Generare imagini (opțional): copertă sugestivă pentru carte cu dall-e-3 sau gpt-image-1.
+🖼️ Generare imagini: copertă sugestivă pentru carte cu dall-e-3.
 
 🌐 UI tip ChatGPT: construit în Streamlit, istoric în memorie (se pierde la refresh).
 
